@@ -5,19 +5,23 @@
 }
 
 .gallery {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0;
+    display: flex;
+    flex-wrap: wrap;
     width: 100%;
+    align-items: flex-start;
+    gap: 10px; /* 添加间距 */
+    padding: 5px; /* 为整个画廊添加内边距 */
+    box-sizing: border-box;
 }
 
 .gallery-item {
     position: relative;
-    width: 100%;
-    aspect-ratio: 4/3;
+    height: 40vh; /* 固定高度 */
+    flex-grow: 1;
     overflow: hidden;
     cursor: pointer;
     background-color: #f0f0f0;
+    min-width: 200px; /* 最小宽度，确保一行不会超过6个 */
 }
 
 .gallery-item img {
@@ -25,6 +29,8 @@
     height: 100%;
     object-fit: cover;
     transition: transform 0.3s ease;
+    opacity: 0;
+    animation: fadeIn 1s ease-in forwards;
 }
 
 .gallery-item:hover img {
@@ -66,11 +72,13 @@
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 2;
+    opacity: 0;
+    animation: fadeIn 1s ease-in forwards;
 }
 
 .close {
     position: absolute;
-    right: 25px;
+    right: 0px;
     top: 10px;
     color: #fff;
     font-size: 35px;
@@ -82,7 +90,7 @@
 .download-btn {
     position: absolute;
     bottom: 20px;
-    left: 50%;
+    left: calc(50% - 104px);
     transform: translateX(-50%);
     padding: 10px 20px;
     background-color: #fff;
@@ -129,14 +137,32 @@
     font-size: 18px;
 }
 
+.gallery::after {
+    content: '';
+    flex-grow: 999999;
+    min-width: 200px;
+    margin: 5px;
+}
+
 @media screen and (max-width: 768px) {
-    .gallery {
-        grid-template-columns: repeat(2, 1fr);
+    .gallery-item {
+        height: 200px;
+        min-width: 150px;
     }
 }
 
 @media screen and (max-width: 480px) {
-    .gallery {
-        grid-template-columns: repeat(1, 1fr);
+    .gallery-item {
+        height: 150px;
+        min-width: 100%;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
     }
 }

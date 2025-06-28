@@ -20,7 +20,7 @@ const GalleryView = {
                          :src="currentImage ? currentImage.medium : ''" 
                          @load="onImageLoad"
                          @click.stop>
-                    <div class="loading" v-if="isLoading">加载中...</div>
+                    <div class="loading" v-if="isLoading">Loading...</div>
                     <a :href="currentImage?.full" 
                        class="download-btn" 
                        download
@@ -43,11 +43,34 @@ const GalleryView = {
             try {
                 const response = await fetch('/config/images.json');
                 const data = await response.json();
-                this.images = data.imagesList.map(filename => ({
-                    preview: `images/preview/${filename}`,
-                    medium: `images/medium/${filename}`,
-                    full: `images/full/${filename}`
+                
+                // 预加载图片以获取尺寸信息
+                this.images = await Promise.all(data.imagesList.map(async filename => {
+                    const img = new Image();
+                    img.src = `images/preview/${filename}`;
+                    await new Promise(resolve => {
+                        img.onload = resolve;
+                    });
+                    
+                    return {
+                        preview: `images/preview/${filename}`,
+                        medium: `images/medium/${filename}`,
+                        full: `images/full/${filename}`,
+                        width: img.naturalWidth,
+                        height: img.naturalHeight,
+                        aspectRatio: img.naturalWidth / img.naturalHeight
+                    };
                 }));
+
+                // 计算每个图片的flex-basis
+                this.$nextTick(() => {
+                    const items = document.querySelectorAll('.gallery-item');
+                    items.forEach((item, index) => {
+                        const image = this.images[index];
+                        const flexBasis = (400 * image.aspectRatio) + 'px';
+                        item.style.flexBasis = flexBasis;
+                    });
+                });
             } catch (error) {
                 console.error('Error loading images:', error);
             }
@@ -59,6 +82,16 @@ const GalleryView = {
             this.currentIndex = index;
             this.currentImage = this.images[index];
             this.showModal = true;
+
+            // 重置动画
+            this.$nextTick(() => {
+                const modalImage = document.querySelector('.modal-content');
+                if (modalImage) {
+                    modalImage.style.animation = 'none';
+                    modalImage.offsetHeight; // 触发重排
+                    modalImage.style.animation = null;
+                }
+            });
         },
         
         prevImage() {
