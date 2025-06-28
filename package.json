@@ -1,0 +1,6 @@
+{
+  "name": "lens-stories",
+  "scripts": {
+    "update-images": "node tools/update-images.js"
+  }
+}
