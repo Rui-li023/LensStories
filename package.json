@@ -2,5 +2,8 @@
   "name": "lens-stories",
   "scripts": {
     "update-images": "node tools/update-images.js"
+  },
+  "dependencies": {
+    "sharp": "^0.32.6"
   }
 }

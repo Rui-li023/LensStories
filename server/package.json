@@ -1,0 +1,13 @@
+{
+  "name": "lensstories-server",
+  "version": "1.0.0",
+  "description": "Simple like server for LensStories",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}

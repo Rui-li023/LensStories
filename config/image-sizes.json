@@ -1,0 +1,20 @@
+{
+  "sizes": [
+    {
+      "name": "preview",
+      "maxDimension": 480,
+      "outputDir": "images/preview"
+    },
+    {
+      "name": "medium",
+      "maxDimension": 1200,
+      "outputDir": "images/medium"
+    },
+    {
+      "name": "full",
+      "maxDimension": 1920,
+      "outputDir": "images/full"
+    }
+  ],
+  "sourceDir": "images/"
+}

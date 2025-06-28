@@ -7,9 +7,13 @@ const GalleryView = {
                      class="gallery-item"
                      @click.stop="openModal(index)">
                     <img :src="image.preview" loading="lazy">
+                    <div class="like-button" @click.stop="toggleLike(index)">
+                        <span :class="['heart', { 'liked': isLiked(index) }]">♥</span>
+                        <span class="like-count" v-if="getLikeCount(index)">{{getLikeCount(index)}}</span>
+                    </div>
                 </div>
             </div>
-            
+
             <template v-if="showModal">
                 <div class="modal">
                     <div class="modal-backdrop" @click="closeModal"></div>
@@ -25,6 +29,10 @@ const GalleryView = {
                        class="download-btn" 
                        download
                        @click.stop>下载原图</a>
+                    <div class="modal-like-button" @click.stop="toggleLike(currentIndex)">
+                        <span :class="['heart', { 'liked': isLiked(currentIndex) }]">♥</span>
+                        <span class="like-count" v-if="getLikeCount(currentIndex)">{{getLikeCount(currentIndex)}}</span>
+                    </div>
                 </div>
             </template>
         </div>
@@ -35,7 +43,9 @@ const GalleryView = {
             showModal: false,
             currentImage: null,
             currentIndex: 0,
-            isLoading: false
+            isLoading: false,
+            likedImages: JSON.parse(localStorage.getItem('likedImages') || '{}'),
+            globalLikes: {}
         }
     },
     methods: {
@@ -73,6 +83,15 @@ const GalleryView = {
                 });
             } catch (error) {
                 console.error('Error loading images:', error);
+            }
+        },
+
+        async loadGlobalLikes() {
+            try {
+                const response = await fetch('api/likes');
+                this.globalLikes = await response.json();
+            } catch (error) {
+                console.error('Error loading likes:', error);
             }
         },
 
@@ -144,10 +163,52 @@ const GalleryView = {
                     this.nextImage();
                     break;
             }
+        },
+
+        async toggleLike(index) {
+            const imageId = this.images[index].preview;
+            const wasLiked = this.likedImages[imageId];
+            
+            try {
+                // 更新个人点赞状态
+                if (wasLiked) {
+                    delete this.likedImages[imageId];
+                    await fetch(`api/likes/${encodeURIComponent(imageId)}`, {
+                        method: 'DELETE'
+                    });
+                } else {
+                    this.likedImages[imageId] = true;
+                    await fetch(`api/likes/${encodeURIComponent(imageId)}`, {
+                        method: 'POST'
+                    });
+                }
+                
+                // 保存个人点赞状态
+                localStorage.setItem('likedImages', JSON.stringify(this.likedImages));
+                
+                // 重新加载全局点赞数
+                await this.loadGlobalLikes();
+                
+            } catch (error) {
+                console.error('Error updating likes:', error);
+            }
+        },
+        
+        getLikeCount(index) {
+            if (!this.images[index]) return 0;
+            const imageId = this.images[index].preview;
+            return this.globalLikes[imageId] || 0;
+        },
+        
+        isLiked(index) {
+            if (!this.images[index]) return false;
+            const imageId = this.images[index].preview;
+            return Boolean(this.likedImages[imageId]);
         }
     },
-    mounted() {
-        this.loadImages();
+    async mounted() {
+        await this.loadImages();
+        await this.loadGlobalLikes();
         document.addEventListener('keydown', this.handleKeydown);
     },
     unmounted() {
