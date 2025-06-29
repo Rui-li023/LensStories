@@ -19,7 +19,7 @@ const GalleryView = {
                     <div class="modal-backdrop" @click="closeModal"></div>
                     <button class="nav-btn prev" @click.stop="prevImage" v-show="currentIndex > 0">&lt;</button>
                     <button class="nav-btn next" @click.stop="nextImage" v-show="currentIndex < images.length - 1">&gt;</button>
-                    <span class="close" @click.stop="closeModal">&times;</span>
+                    <img src="/assets/icons/close.svg" class="close" @click.stop="closeModal">
                     <img class="modal-content" 
                          :src="currentImage ? currentImage.medium : ''" 
                          @load="onImageLoad"

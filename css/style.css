@@ -190,13 +190,18 @@
 
 .close {
     position: absolute;
-    right: 20px;
-    top: 10px;
-    color: #fff;
-    font-size: 35px;
+    top: 20px;
+    left: 20px;
+    width: 32px;
+    height: 32px;
     cursor: pointer;
-    position: relative;
     z-index: 3;
+    filter: invert(1);
+    transition: transform 0.2s ease;
+}
+
+.close:hover {
+    transform: scale(1.1);
 }
 
 .download-btn {
