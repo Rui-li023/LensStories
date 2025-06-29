@@ -11,7 +11,7 @@ async function processImage(inputPath, size) {
     const outputPath = path.join(outputDir, filename);
 
     // 确保输出目录存在
-    await fs.mkdir(outputDir, { recursive: true });
+    await fs.mkdirSync(outputDir, { recursive: true });
 
     // 获取图片信息
     const metadata = await sharp(inputPath).metadata();
@@ -62,7 +62,7 @@ async function processImage(inputPath, size) {
 async function processAllImages() {
     try {
         // 读取源目录中的所有图片
-        const files = await fs.readdir(config.sourceDir);
+        const files = await fs.readdirSync(config.sourceDir);
         const imageFiles = files.filter(file => 
             /\.(jpg|jpeg|png|gif)$/i.test(file)
         );
@@ -133,7 +133,7 @@ async function updateImageConfig() {
 }
 
 async function main() {
-    // await processAllImages();
+    await processAllImages();
     await updateImageConfig();
 }
 

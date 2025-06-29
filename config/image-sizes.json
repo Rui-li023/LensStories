@@ -2,17 +2,17 @@
   "sizes": [
     {
       "name": "preview",
-      "maxDimension": 600,
+      "maxDimension": 900,
       "outputDir": "images/preview"
     },
     {
       "name": "medium",
-      "maxDimension": 1800,
+      "maxDimension": 1920,
       "outputDir": "images/medium"
     },
     {
       "name": "full",
-      "maxDimension": 3000,
+      "maxDimension": 2400,
       "outputDir": "images/full"
     }
   ],

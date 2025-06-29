@@ -45,7 +45,12 @@ const GalleryView = {
             currentIndex: 0,
             isLoading: false,
             likedImages: JSON.parse(localStorage.getItem('likedImages') || '{}'),
-            globalLikes: {}
+            globalLikes: {},
+            isLoadingBatch: false,
+            currentBatchIndex: 0,
+            allImagesList: [],
+            batchSize: 15,
+            loadingInterval: 2000
         }
     },
     methods: {
@@ -53,49 +58,66 @@ const GalleryView = {
             try {
                 const response = await fetch('/config/images.json');
                 const data = await response.json();
+                this.allImagesList = data.imagesList;
                 
-                // 逐个加载图片
-                const loadedImages = [];
-                for (const filename of data.imagesList) {
-                    try {
-                        const img = new Image();
-                        const loadPromise = new Promise((resolve, reject) => {
-                            img.onload = () => resolve(img);
-                            img.onerror = () => reject(new Error(`Failed to load ${filename}`));
-                        });
-                        
-                        img.src = `images/preview/${filename}`;
-                        const loadedImg = await loadPromise;
-                        
-                        const imageData = {
-                            preview: `images/preview/${filename}`,
-                            medium: `images/medium/${filename}`,
-                            full: `images/full/${filename}`,
-                            width: loadedImg.naturalWidth,
-                            height: loadedImg.naturalHeight,
-                            aspectRatio: loadedImg.naturalWidth / loadedImg.naturalHeight
-                        };
-                        
-                        loadedImages.push(imageData);
-                        // 立即更新显示已加载的图片
-                        this.images = [...loadedImages];
-                        
-                        // 计算新加载图片的flex-basis
-                        this.$nextTick(() => {
-                            const items = document.querySelectorAll('.gallery-item');
-                            const lastItem = items[items.length - 1];
-                            if (lastItem) {
-                                const flexBasis = (400 * imageData.aspectRatio) + 'px';
-                                lastItem.style.flexBasis = flexBasis;
-                            }
-                        });
-                    } catch (error) {
-                        console.warn(`Skipping image ${filename}:`, error);
-                        continue;
-                    }
-                }
+                this.loadNextBatch();
             } catch (error) {
                 console.error('Error loading images.json:', error);
+            }
+        },
+
+        async loadNextBatch() {
+            if (this.isLoadingBatch || this.currentBatchIndex >= this.allImagesList.length) {
+                return;
+            }
+
+            this.isLoadingBatch = true;
+            const batch = this.allImagesList.slice(
+                this.currentBatchIndex,
+                this.currentBatchIndex + this.batchSize
+            );
+
+            for (const filename of batch) {
+                try {
+                    const img = new Image();
+                    const loadPromise = new Promise((resolve, reject) => {
+                        img.onload = () => resolve(img);
+                        img.onerror = () => reject(new Error(`Failed to load ${filename}`));
+                    });
+                    
+                    img.src = `images/preview/${filename}`;
+                    const loadedImg = await loadPromise;
+                    
+                    const imageData = {
+                        preview: `images/preview/${filename}`,
+                        medium: `images/medium/${filename}`,
+                        full: `images/full/${filename}`,
+                        width: loadedImg.naturalWidth,
+                        height: loadedImg.naturalHeight,
+                        aspectRatio: loadedImg.naturalWidth / loadedImg.naturalHeight
+                    };
+                    
+                    this.images.push(imageData);
+                    
+                    this.$nextTick(() => {
+                        const items = document.querySelectorAll('.gallery-item');
+                        const lastItem = items[items.length - 1];
+                        if (lastItem) {
+                            const flexBasis = (400 * imageData.aspectRatio) + 'px';
+                            lastItem.style.flexBasis = flexBasis;
+                        }
+                    });
+                } catch (error) {
+                    console.warn(`Skipping image ${filename}:`, error);
+                    continue;
+                }
+            }
+
+            this.currentBatchIndex += this.batchSize;
+            this.isLoadingBatch = false;
+
+            if (this.currentBatchIndex < this.allImagesList.length) {
+                setTimeout(() => this.loadNextBatch(), this.loadingInterval);
             }
         },
 
@@ -109,18 +131,17 @@ const GalleryView = {
         },
 
         openModal(index) {
-            console.log('Opening modal for index:', index); // 添加调试日志
+            console.log('Opening modal for index:', index);
             this.isLoading = true;
             this.currentIndex = index;
             this.currentImage = this.images[index];
             this.showModal = true;
 
-            // 重置动画
             this.$nextTick(() => {
                 const modalImage = document.querySelector('.modal-content');
                 if (modalImage) {
                     modalImage.style.animation = 'none';
-                    modalImage.offsetHeight; // 触发重排
+                    modalImage.offsetHeight;
                     modalImage.style.animation = null;
                 }
             });
@@ -144,11 +165,9 @@ const GalleryView = {
             const viewportWidth = window.innerWidth;
             const viewportHeight = window.innerHeight;
             
-            // 计算图片相对于视口的比例
             const widthRatio = img.naturalWidth / viewportWidth;
             const heightRatio = img.naturalHeight / viewportHeight;
             
-            // 如果图片尺寸相对较小，强制使用90%
             if (widthRatio < 0.9 && heightRatio < 0.9) {
                 img.style.width = '90vw';
                 img.style.height = '90vh';
@@ -163,12 +182,15 @@ const GalleryView = {
         },
 
         handleKeydown(event) {
+            if (event.key === 'Escape' && this.showModal) {
+                event.preventDefault();
+                this.closeModal();
+                return;
+            }
+            
             if (!this.showModal) return;
             
             switch(event.key) {
-                case 'Escape':
-                    this.closeModal();
-                    break;
                 case 'ArrowLeft':
                     this.prevImage();
                     break;
@@ -183,7 +205,6 @@ const GalleryView = {
             const wasLiked = this.likedImages[imageId];
             
             try {
-                // 更新个人点赞状态
                 if (wasLiked) {
                     delete this.likedImages[imageId];
                     await fetch(`api/likes/${encodeURIComponent(imageId)}`, {
@@ -196,10 +217,8 @@ const GalleryView = {
                     });
                 }
                 
-                // 保存个人点赞状态
                 localStorage.setItem('likedImages', JSON.stringify(this.likedImages));
                 
-                // 重新加载全局点赞数
                 await this.loadGlobalLikes();
                 
             } catch (error) {
@@ -223,8 +242,18 @@ const GalleryView = {
         await this.loadImages();
         await this.loadGlobalLikes();
         document.addEventListener('keydown', this.handleKeydown);
+
+        window.addEventListener('scroll', () => {
+            const scrollPosition = window.innerHeight + window.scrollY;
+            const bodyHeight = document.body.offsetHeight;
+            
+            if (scrollPosition >= bodyHeight - 1000) {
+                this.loadNextBatch();
+            }
+        });
     },
     unmounted() {
         document.removeEventListener('keydown', this.handleKeydown);
+        window.removeEventListener('scroll', this.loadNextBatch);
     }
 }
