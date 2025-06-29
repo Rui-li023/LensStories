@@ -1,5 +1,5 @@
 const sharp = require('sharp');
-const fs = require('fs').promises;
+const fs = require('fs');
 const path = require('path');
 
 // 读取配置文件
@@ -41,13 +41,20 @@ async function processImage(inputPath, size) {
     }
 
     // 处理图片，保持方向
-    await sharp(inputPath)
+    let pipeline = sharp(inputPath)
         .resize(width, height, {
             fit: 'inside',
             withoutEnlargement: true
         })
-        .rotate() // 自动根据 EXIF 数据旋转
-        .toFile(outputPath);
+        .rotate(); // 自动根据 EXIF 数据旋转
+
+    if (/\.jpe?g$/i.test(filename)) {
+        pipeline = pipeline.jpeg({ quality: 90 });
+    } else if (/\.png$/i.test(filename)) {
+        pipeline = pipeline.png({ quality: 90 });
+    }
+
+    await pipeline.toFile(outputPath);
 
     console.log(`处理完成: ${outputPath} (${width}x${height})`);
 }
@@ -77,4 +84,57 @@ async function processAllImages() {
     }
 }
 
-processAllImages();
+async function updateImageConfig() {
+    try {
+        const previewDir = path.join(__dirname, '../images/preview');
+        const normalDir = path.join(__dirname, '../images/medium');
+        const largeDir = path.join(__dirname, '../images/full');
+        const configPath = path.join(__dirname, '../config/images.json');
+
+        // 读取预览图文件夹中的所有图片
+        const previewFiles = await fs.readdirSync(previewDir);
+        const imageFiles = previewFiles.filter(file => /\.(jpg|jpeg|png|gif)$/i.test(file));
+        // console.log(previewFiles)
+        // 验证每个图片在所有尺寸文件夹中都存在
+        const validImages = imageFiles.filter(file => {
+            const previewExists = fs.existsSync(path.join(previewDir, file));
+            const normalExists = fs.existsSync(path.join(normalDir, file));
+            const largeExists = fs.existsSync(path.join(largeDir, file));
+            return previewExists && normalExists && largeExists;
+        });
+
+        // 读取现有的配置文件（如果存在）
+        let existingConfig = {};
+        try {
+            const existingConfigData = await fs.readFileSync(configPath, 'utf8');
+            existingConfig = JSON.parse(existingConfigData);
+        } catch (error) {
+            console.log('没有找到现有配置文件或文件格式错误，将创建新的配置文件');
+        }
+
+        // 合并现有配置和经过验证的图片列表
+        const config = {
+            ...existingConfig,
+            imagesList: validImages
+        };
+
+        // 确保配置文件目录存在
+        const configDir = path.dirname(configPath);
+        if (!fs.existsSync(configDir)) {
+            await fs.mkdir(configDir, { recursive: true });
+        }
+
+        // 更新配置文件
+        await fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+        console.log(`图片配置已更新！共有 ${validImages.length} 张图片符合要求`);
+    } catch (error) {
+        console.error('更新图片配置时出错:', error);
+    }
+}
+
+async function main() {
+    // await processAllImages();
+    await updateImageConfig();
+}
+
+main().catch(error => console.error('程序执行出错:', error));

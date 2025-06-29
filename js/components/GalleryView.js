@@ -54,35 +54,48 @@ const GalleryView = {
                 const response = await fetch('/config/images.json');
                 const data = await response.json();
                 
-                // 预加载图片以获取尺寸信息
-                this.images = await Promise.all(data.imagesList.map(async filename => {
-                    const img = new Image();
-                    img.src = `images/preview/${filename}`;
-                    await new Promise(resolve => {
-                        img.onload = resolve;
-                    });
-                    
-                    return {
-                        preview: `images/preview/${filename}`,
-                        medium: `images/medium/${filename}`,
-                        full: `images/full/${filename}`,
-                        width: img.naturalWidth,
-                        height: img.naturalHeight,
-                        aspectRatio: img.naturalWidth / img.naturalHeight
-                    };
-                }));
-
-                // 计算每个图片的flex-basis
-                this.$nextTick(() => {
-                    const items = document.querySelectorAll('.gallery-item');
-                    items.forEach((item, index) => {
-                        const image = this.images[index];
-                        const flexBasis = (400 * image.aspectRatio) + 'px';
-                        item.style.flexBasis = flexBasis;
-                    });
-                });
+                // 逐个加载图片
+                const loadedImages = [];
+                for (const filename of data.imagesList) {
+                    try {
+                        const img = new Image();
+                        const loadPromise = new Promise((resolve, reject) => {
+                            img.onload = () => resolve(img);
+                            img.onerror = () => reject(new Error(`Failed to load ${filename}`));
+                        });
+                        
+                        img.src = `images/preview/${filename}`;
+                        const loadedImg = await loadPromise;
+                        
+                        const imageData = {
+                            preview: `images/preview/${filename}`,
+                            medium: `images/medium/${filename}`,
+                            full: `images/full/${filename}`,
+                            width: loadedImg.naturalWidth,
+                            height: loadedImg.naturalHeight,
+                            aspectRatio: loadedImg.naturalWidth / loadedImg.naturalHeight
+                        };
+                        
+                        loadedImages.push(imageData);
+                        // 立即更新显示已加载的图片
+                        this.images = [...loadedImages];
+                        
+                        // 计算新加载图片的flex-basis
+                        this.$nextTick(() => {
+                            const items = document.querySelectorAll('.gallery-item');
+                            const lastItem = items[items.length - 1];
+                            if (lastItem) {
+                                const flexBasis = (400 * imageData.aspectRatio) + 'px';
+                                lastItem.style.flexBasis = flexBasis;
+                            }
+                        });
+                    } catch (error) {
+                        console.warn(`Skipping image ${filename}:`, error);
+                        continue;
+                    }
+                }
             } catch (error) {
-                console.error('Error loading images:', error);
+                console.error('Error loading images.json:', error);
             }
         },
 
