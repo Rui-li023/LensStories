@@ -28,7 +28,7 @@ const GalleryView = {
                     <a :href="currentImage?.full" 
                        class="download-btn" 
                        download
-                       @click.stop>下载原图</a>
+                       @click.stop>Download</a>
                     <div class="modal-like-button" @click.stop="toggleLike(currentIndex)">
                         <span :class="['heart', { 'liked': isLiked(currentIndex) }]">♥</span>
                         <span class="like-count" v-if="getLikeCount(currentIndex)">{{getLikeCount(currentIndex)}}</span>
